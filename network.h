@@ -25,6 +25,7 @@ namespace networking{
         server(const networking::server&);
         ~server();
         void cleanup();
+        SOCKET acceptConnection();
     };
 
     class client{
