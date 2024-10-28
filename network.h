@@ -2,7 +2,7 @@
 #include <iostream>
 
 namespace networking{
-    const std::wstring SELF = L"127.0.0.1";
+    const static std::wstring SELF = L"127.0.0.1";
     const int SERVER_PORT = 60800;
     const int BACKUP_SERVER_PORT = 60801;
     const WORD WINSOCK_VERSION_NEEDED = WINSOCK_VERSION;
@@ -21,11 +21,12 @@ namespace networking{
         6) send and receive data - rect(),send(),recvfrom(),sendto()
         7) Disconnect - closesocket()
         */
-        server(std::wstring );
-        server(const networking::server&);
-        ~server();
-        void cleanup();
-        SOCKET acceptConnection();
+        public:
+            server(std::wstring );
+            server(const networking::server&);
+            ~server();
+            void cleanup();
+            SOCKET acceptConnection();
     };
 
     class client{
