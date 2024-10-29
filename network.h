@@ -1,15 +1,19 @@
+#ifndef _NETWORKING
+#define _NETWORKING
+
 #include <WinSock2.h>
 #include <iostream>
+#include <exception>
 
-namespace networking{
+namespace network{
     const static std::wstring SELF = L"127.0.0.1";
     const int SERVER_PORT = 60800;
     const int BACKUP_SERVER_PORT = 60801;
     const WORD WINSOCK_VERSION_NEEDED = WINSOCK_VERSION;
-    WSADATA wsaData;
     const int MAX_PARTICIPTANTS = 2;
 
     class server{
+        WSADATA requiredData;
         sockaddr_in socketAddr;
         SOCKET serverSocket = INVALID_SOCKET;
         /*
@@ -23,13 +27,14 @@ namespace networking{
         */
         public:
             server(std::wstring );
-            server(const networking::server&);
+            server(const server&);
             ~server();
             void cleanup();
             SOCKET acceptConnection();
     };
 
     class client{
+        WSADATA requiredData;
         sockaddr socketAddr;
         SOCKET clientSocket = INVALID_SOCKET;
         /*
@@ -41,3 +46,4 @@ namespace networking{
         */
     };
 };
+#endif

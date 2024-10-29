@@ -1,17 +1,21 @@
 #include "network.h"
 #include <WS2tcpip.h>
 #include <codecvt>
-using namespace networking;
+#include <locale>
+using namespace network;
+using convert_type = std::codecvt_utf8<wchar_t>;
+
+std::wstring_convert<convert_type, wchar_t> converter;
 
 server::server(std::wstring IPAddr = SELF){
     //Step 1
     std::cout << "Starting WSA\n";
-    int WSAError = WSAStartup(WINSOCK_VERSION_NEEDED,&wsaData);
+    int WSAError = WSAStartup(WINSOCK_VERSION_NEEDED,&requiredData);
     if(WSAError){
         std::cerr << "Winsock dll not found\n";
         throw std::runtime_error("Winsock dll not found");
     }else{
-        std::cout << "Status: " << wsaData.szSystemStatus << std::endl; //print WSA status and flush
+        std::cout << "Status: " << requiredData.szSystemStatus << std::endl; //print WSA status and flush
     }
 
     //step 2
@@ -20,7 +24,7 @@ server::server(std::wstring IPAddr = SELF){
     if(serverSocket==INVALID_SOCKET){
         cleanup();
         std::cerr << "Error creating socket: " << WSAGetLastError() << std::endl;
-        throw std::exception("Error creating socket: " + WSAGetLastError());
+        throw std::runtime_error("Error creating socket: " + WSAGetLastError());
     }
 
     //step 3
@@ -28,7 +32,8 @@ server::server(std::wstring IPAddr = SELF){
     socketAddr.sin_port = htons(SERVER_PORT);
     retry:
     socketAddr.sin_family = AF_INET;
-    InetPton(AF_INET,IPAddr.c_str(),&socketAddr.sin_addr.s_addr);
+    std::string thinIP = converter.to_bytes(IPAddr);
+    InetPton(AF_INET,thinIP.c_str(),&socketAddr.sin_addr.s_addr); //there's an eroneous error of "const char* is incompatiable with LPCWSTR", ignore it
     WSAError = bind(serverSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr));
     if(WSAError){
         if(socketAddr.sin_port != htons(BACKUP_SERVER_PORT)){
@@ -39,7 +44,7 @@ server::server(std::wstring IPAddr = SELF){
 
         cleanup();
         std::cerr << "Error binding socket: " << WSAGetLastError() << std::endl;
-        throw std::exception("Error binding socket: " + WSAGetLastError());
+        throw std::runtime_error("Error binding socket: " + WSAGetLastError());
     }
 
     //Step 4
@@ -48,7 +53,7 @@ server::server(std::wstring IPAddr = SELF){
     if(WSAError){
         cleanup();
         std::cerr << "Cannot listen: " << WSAGetLastError() << std::endl;
-        throw std::exception("Cannot listen: " + WSAGetLastError());
+        throw std::runtime_error("Cannot listen: " + WSAGetLastError());
     }
 }
 
