@@ -6,16 +6,18 @@
 #include <exception>
 
 namespace network{
-    const static std::wstring SELF = L"127.0.0.1";
+    const static std::string SELF = "127.0.0.1";
     const int SERVER_PORT = 60800;
     const int BACKUP_SERVER_PORT = 60801;
     const WORD WINSOCK_VERSION_NEEDED = WINSOCK_VERSION;
-    const int MAX_PARTICIPTANTS = 2;
+    const int MAX_PARTICIPTANTS = 2; //minimum of 2 
 
     class server{
         WSADATA requiredData;
         sockaddr_in socketAddr;
         SOCKET serverSocket = INVALID_SOCKET;
+
+        void cleanup();
         /*
         1) Init WSA DLL - WSAStartup()
         2) create a socket - socket()
@@ -26,17 +28,18 @@ namespace network{
         7) Disconnect - closesocket()
         */
         public:
-            server(std::wstring );
+            server(std::string );
             server(const server&);
             ~server();
-            void cleanup();
             SOCKET acceptConnection();
     };
 
     class client{
         WSADATA requiredData;
-        sockaddr socketAddr;
+        sockaddr_in socketAddr;
         SOCKET clientSocket = INVALID_SOCKET;
+
+        void cleanup();
         /*
         1) init WSA DLL - WSAStartup()
         2) create a socket - socket()
@@ -44,6 +47,12 @@ namespace network{
         4) Send and receive data - recv(),send(),recvfrom(),sendto()
         5) Disconnect - closesocket()
         */
+       public:
+        client(std::string );
+        client(const client& );
+        ~client();
+        void sendMessage(std::string);
+
     };
 };
 #endif

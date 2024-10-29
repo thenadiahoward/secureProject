@@ -3,11 +3,8 @@
 #include <codecvt>
 #include <locale>
 using namespace network;
-using convert_type = std::codecvt_utf8<wchar_t>;
 
-std::wstring_convert<convert_type, wchar_t> converter;
-
-server::server(std::wstring IPAddr = SELF){
+server::server(std::string IPAddr = SELF){
     //Step 1
     std::cout << "Starting WSA\n";
     int WSAError = WSAStartup(WINSOCK_VERSION_NEEDED,&requiredData);
@@ -32,8 +29,7 @@ server::server(std::wstring IPAddr = SELF){
     socketAddr.sin_port = htons(SERVER_PORT);
     retry:
     socketAddr.sin_family = AF_INET;
-    std::string thinIP = converter.to_bytes(IPAddr);
-    InetPton(AF_INET,thinIP.c_str(),&socketAddr.sin_addr.s_addr); //there's an eroneous error of "const char* is incompatiable with LPCWSTR", ignore it
+    InetPton(AF_INET,IPAddr.c_str(),&socketAddr.sin_addr.s_addr); //there's an eroneous error of "const char* is incompatiable with LPCWSTR", ignore it
     WSAError = bind(serverSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr));
     if(WSAError){
         if(socketAddr.sin_port != htons(BACKUP_SERVER_PORT)){
