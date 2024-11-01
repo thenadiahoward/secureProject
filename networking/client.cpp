@@ -54,12 +54,25 @@ client::client(std::string ipAddr = SELF){
 void client::cleanup(){
     if(clientSocket != INVALID_SOCKET) closesocket(this->clientSocket);
     int WSAError = WSACleanup();
-    if(WSAError){
-        std::cerr << "Cleanup error\n";
-        throw std::runtime_error("Cleanup error");
+    int error = WSAGetLastError();
+    if(WSAError && error != 10093){
+        std::cerr << "Cleanup error: "<< error <<"\n";
+        throw std::runtime_error("Cleanup error: " + error);
+    }else if(error == 10093){
+        std::cerr << "WSA does not exist/already shutdown\n";
     }
 }
 
 client::~client(){
     cleanup();
+}
+
+bool client::sendMessage(std::string message){
+    int error;
+    if(send(clientSocket,message.c_str(),message.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
+        std::cerr << "Error sending message: " << error << std::endl;
+        return false;
+    }else{
+        return true;
+    }
 }

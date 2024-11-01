@@ -76,8 +76,35 @@ server::~server(){
 void server::cleanup(){
     if(serverSocket != INVALID_SOCKET) closesocket(this->serverSocket);
     int WSAError = WSACleanup();
-    if(WSAError){
-        std::cerr << "Cleanup error\n";
-        throw std::runtime_error("Cleanup error");
+    int error = WSAGetLastError();
+    if(WSAError && error != 10093){
+        std::cerr << "Cleanup error: "<< error <<"\n";
+        throw std::runtime_error("Cleanup error: " + error);
+    }else if(error == 10093){
+        std::cerr << "WSA does not exist/already shutdown\n";
     }
+}
+
+server::server(SOCKET connectedSocket){
+    int socketAddrLen = sizeof(socketAddr);
+    getpeername(connectedSocket,(SOCKADDR*)&socketAddr,&socketAddrLen);
+    serverSocket = connectedSocket;
+}
+
+std::string server::receiveMessage(){
+    int error;
+    int num_recv;
+    if((num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0)) == SOCKET_ERROR && (error = WSAGetLastError())){
+        std::cerr << "Could not receive message: " << error << std::endl;
+        return std::string("");
+    }else{
+        buffer[num_recv] = '\0';
+        return std::string(buffer);
+    }
+}
+
+server::server(const network::server& copyFrom){
+    this->requiredData = copyFrom.requiredData;
+    this->serverSocket = copyFrom.serverSocket;
+    this->socketAddr = copyFrom.socketAddr;
 }

@@ -11,11 +11,14 @@ namespace network{
     const int BACKUP_SERVER_PORT = 60801;
     const WORD WINSOCK_VERSION_NEEDED = WINSOCK_VERSION;
     const int MAX_PARTICIPTANTS = 2; //minimum of 2 
+    const int BUFFER_SIZE = 1024;
+    const int MAX_MESSAGE_LEN = BUFFER_SIZE;
 
     class server{
         WSADATA requiredData;
         sockaddr_in socketAddr;
         SOCKET serverSocket = INVALID_SOCKET;
+        char buffer[BUFFER_SIZE] = {0};
 
         void cleanup();
         /*
@@ -30,8 +33,10 @@ namespace network{
         public:
             server(std::string );
             server(const server&);
+            server(SOCKET );
             ~server();
             SOCKET acceptConnection();
+            std::string receiveMessage();
     };
 
     class client{
@@ -51,8 +56,10 @@ namespace network{
         client(std::string );
         client(const client& );
         ~client();
-        void sendMessage(std::string);
+        bool sendMessage(std::string);
+        bool sendFile(/*file goes here*/);
 
     };
 };
+
 #endif
