@@ -1,15 +1,15 @@
 #include <vector>
-#include "network.h"
+#include "networking/network.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-void acceptConnections(network::server&,std::vector<SOCKET>&);
+void acceptConnections(network::server&,std::vector<network::server>&);
 
 int main(int argc,char** argv){
     omp_set_num_teams(network::MAX_PARTICIPTANTS);
     int num_threads;
-    std::vector<SOCKET> connections = std::vector<SOCKET>(); //has race conditions
+    std::vector<network::server> connections = std::vector<network::server>(); //has race conditions
     std::string connectionIP = network::SELF;
     std::string temp;
     #ifdef _OPENMP
@@ -32,7 +32,8 @@ int main(int argc,char** argv){
         if(threadID == 0){ //if master thread, aka the server or 1 thread
             std::cout << "Hello\n";
             for(;;){ //main application loop
-                acceptConnections(testServer,connections);
+                if(connections.size() < (network::MAX_PARTICIPTANTS - 1)) acceptConnections(testServer,connections);
+
             }
         }else{
             std::cout << "Please enter the connection string (blank for self): ";
@@ -44,8 +45,8 @@ int main(int argc,char** argv){
     }
 }
 
-void acceptConnections(network::server& server,std::vector<SOCKET>& connections){
-    SOCKET temp = server.acceptConnection();
+void acceptConnections(network::server& server,std::vector<network::server>& connections){
+    network::server temp = network::server(server.acceptConnection());
     #pragma omp critical //so two things don't get pushed at the same time and both end up frankenstein'd
     connections.push_back(temp);
 }
