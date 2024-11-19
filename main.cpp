@@ -17,30 +17,40 @@ int main(int argc,char** argv){
     #else
     num_threads = 1;
     #endif
-    std::cout << "Please enter IP for local server (blank for self): ";
-    std::getline(std::cin,temp);
-    if (temp != "") connectionIP = temp;
-    network::server testServer = network::server(connectionIP);
+    //if(!argc-1){
+    //    std::cout << "Please enter IP for local server (blank for self): ";
+    //    std::getline(std::cin,temp);
+    //    if (temp != "") connectionIP = temp;
+    //}else{
+    //    connectionIP = argv[1];
+    //}
+    network::server testServer = network::server();
     temp = "";
     int threadID;
+    //int active = 0;
     
     #pragma omp parallel num_threads(num_threads) private(connectionIP,temp,threadID)
     {
         connectionIP = network::SELF;
         threadID = omp_get_thread_num();
 
-        if(threadID == 0){ //if master thread, aka the server or 1 thread
+        #pragma omp single
+        { //if master thread, aka the server or 1 thread
             std::cout << "Hello\n";
             for(;;){ //main application loop
-                if(connections.size() < (network::MAX_PARTICIPTANTS - 1)) acceptConnections(testServer,connections);
-
+                if(connections.size() < (network::MAX_PARTICIPTANTS - 1)){
+                    #pragma omp task
+                    {
+                        std::cout << "Please enter the connection string (blank for self): ";
+                        std::getline(std::cin,temp);
+                        if (temp != "") connectionIP = temp;
+                        else std::cout << "IP Empty, connecting to loopback\n";
+                        network::client localClient = network::client(connectionIP);
+                        
+                    }
+                    acceptConnections(testServer,connections);
+                }
             }
-        }else{
-            std::cout << "Please enter the connection string (blank for self): ";
-            std::getline(std::cin,temp);
-            if (temp != "") connectionIP = temp;
-            else std::cout << "IP Empty, connecting to loopback\n";
-            network::client localClient = network::client(connectionIP);
         }
     }
 }

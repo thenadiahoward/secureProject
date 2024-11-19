@@ -33,7 +33,8 @@ namespace network{
         public:
             server(std::string );
             server(const server&);
-            server(SOCKET );
+            server();
+            server(SOCKET);
             ~server();
             SOCKET acceptConnection();
             std::string receiveMessage();
