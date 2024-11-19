@@ -103,6 +103,10 @@ std::string server::receiveMessage(){
     int error;
     int num_recv;
     if((num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0)) == SOCKET_ERROR && (error = WSAGetLastError())){
+        if(error == 10054){ //connection force reset
+            std::cerr << "WARNING: Connection reset\n";
+            return std::string("");
+        }
         std::cerr << "WARNING: Could not receive message: " << error << std::endl;
         return std::string("");
     }else{
