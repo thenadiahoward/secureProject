@@ -8,7 +8,7 @@ int main(int argc, char** argv){
     if(argc - 1){
         ipConnect = argv[1];
     }else{
-        ipConnect = "172.20.208.1";
+        ipConnect = "192.0.0.1";
     }
     network::client testClient = network::client(ipConnect);
     testClient.sendMessage("Hello from a socket\n");
