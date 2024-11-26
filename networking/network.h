@@ -1,5 +1,7 @@
 #ifndef _NETWORKING
 #define _NETWORKING
+#define ENCRYPTION_KEY "YourSecureKey1234" // Replace with securely generated key
+#define ENCRYPTION_IV "YourIV1234"         // Replace with securely generated IV
 
 #include <WinSock2.h>
 #include <iostream>

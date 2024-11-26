@@ -3,11 +3,15 @@
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 
 using namespace network;
 using convert_type = std::codecvt_utf8<wchar_t>;
 
 std::wstring_convert<convert_type, wchar_t> converter;
+
 
 client::client(std::string ipAddr = SELF){
     if(ipAddr == "") throw std::logic_error("No IP provided");
@@ -108,8 +112,9 @@ client::~client(){
 }
 
 bool client::sendMessage(std::string message){
+    std::string encryptedMessage = encryptMessage(message, key, iv); // encrypt message
     int error;
-    if(send(clientSocket,message.c_str(),message.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
+    if(send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
         std::cerr << "WARNING: Error sending message: " << error << std::endl;
         return false;
     }else{
