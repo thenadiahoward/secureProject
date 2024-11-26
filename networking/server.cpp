@@ -47,22 +47,17 @@ server::server(std::string IPAddr = SELF){
     std::cout << "Server is at: " << inet_ntoa(socketAddr.sin_addr) << "\n";
 
     //Step 4
-    std::cout << "Listening\n";
-    WSAError = listen(serverSocket,MAX_PARTICIPTANTS-1);
-    if(WSAError){
-        cleanup();
-        std::cerr << "ERROR: Cannot listen: " << WSAGetLastError() << std::endl;
-        throw std::runtime_error("Cannot listen");
-    }
+    putIntoListen();
 }
 
 //The returned SOCKET should be stored somewhere
-SOCKET server::acceptConnection(){
+SOCKET server::acceptConnection() const{
     //Step 5
     SOCKET otherParty;
     std::cout << "Waiting for connection (" << inet_ntoa(this->socketAddr.sin_addr) <<")...";
 
     otherParty = accept(serverSocket,NULL,NULL); //Blocks
+
     if (otherParty == INVALID_SOCKET){
         int error = WSAGetLastError();
         if(error == 10038){
@@ -78,10 +73,10 @@ SOCKET server::acceptConnection(){
 }
 
 server::~server(){
-    cleanup();
+    if(mainServer) cleanup();
 }
 
-void server::cleanup(){
+void server::cleanup() const{
     if(serverSocket != INVALID_SOCKET) closesocket(this->serverSocket);
     int WSAError = WSACleanup();
     int error = WSAGetLastError();
@@ -94,20 +89,33 @@ void server::cleanup(){
 }
 
 server::server(SOCKET connectedSocket){
+    mainServer = false;
     int socketAddrLen = sizeof(socketAddr);
     getpeername(connectedSocket,(SOCKADDR*)&socketAddr,&socketAddrLen);
     serverSocket = connectedSocket;
+    //WSAStartup(network::WINSOCK_VERSION_NEEDED,&requiredData);
 }
 
-std::string server::receiveMessage(){
+std::string server::receiveMessage() const{
     int error;
-    int num_recv;
-    if((num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0)) == SOCKET_ERROR && (error = WSAGetLastError())){
-        if(error == 10054){ //connection force reset
-            std::cerr << "WARNING: Connection reset\n";
-            return std::string("");
+    char buffer[BUFFER_SIZE];
+    int num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0);
+    if(num_recv == SOCKET_ERROR && (error = WSAGetLastError())){
+        switch (error){
+            case WSAECONNRESET:
+                std::cerr << "WARNING: Connection reset\n";
+                break;
+            case WSANOTINITIALISED:
+                std::cerr << "ERROR: WSA not initialised\n";
+                throw std::runtime_error("WSA not initialised");
+            case WSAENOTSOCK:
+                std::cerr << "ERROR: server is not a valid socket\n";
+                throw std::runtime_error("Server is not a valid socket");
+            default:
+                std::cerr << "WARNING: Could not receive message: " << error << std::endl;
+                break;
         }
-        std::cerr << "WARNING: Could not receive message: " << error << std::endl;
+        
         return std::string("");
     }else{
         buffer[num_recv] = '\0';
@@ -188,4 +196,84 @@ server::server(){
         std::cerr << "ERROR: Cannot listen: " << WSAGetLastError() << std::endl;
         throw std::runtime_error("Cannot listen");
     }
+}
+
+void network::server::putIntoListen() const{
+    std::cout << "Listening\n";
+    int WSAError = listen(serverSocket,MAX_PARTICIPTANTS-1);
+    if(WSAError){
+        WSAError = WSAGetLastError();
+        cleanup();
+        std::cerr << "ERROR: Cannot listen: " << WSAError << std::endl;
+        throw std::runtime_error("Cannot listen");
+    }
+}
+
+server::server(WSAData* wsaData){
+
+    requiredData = *wsaData;
+    std::cout << "Status: " << requiredData.szSystemStatus << std::endl; //print WSA status and flush
+
+    int getAddrInfoReturn;
+    addrinfo* res = NULL;
+    addrinfo hints;
+    bool attempt = false;
+
+    ZeroMemory(&hints,sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+    
+    getAddrInfoReturn = getaddrinfo(NULL,std::to_string(SERVER_PORT).c_str(),&hints,&res);
+    retry:
+    if(getAddrInfoReturn){
+        if(!attempt){
+            std::cerr << "WARNING: Could not resolve server name: " << getAddrInfoReturn << "\n";
+            getAddrInfoReturn = getaddrinfo(NULL,std::to_string(BACKUP_SERVER_PORT).c_str(),&hints,&res);
+            attempt = !attempt;
+            goto retry;
+        }
+        std::cerr << "ERROR: Failed to resolve server name: " << getAddrInfoReturn << std::endl;
+        throw std::runtime_error("Failed to resolve server name");
+    }
+    sockaddr_in* temp = ((sockaddr_in*) res->ai_addr);
+    std::cout << "Found " << inet_ntoa(temp->sin_addr) << ":" << (attempt ? BACKUP_SERVER_PORT : SERVER_PORT) << "\n";
+    socketAddr = *((sockaddr_in*) res->ai_addr);
+
+    //step 2
+    std::cout << "Creating socket\n";
+    serverSocket = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+    if(serverSocket==INVALID_SOCKET){
+        cleanup();
+        std::cerr << "ERROR: Error creating socket: " << WSAGetLastError() << std::endl;
+        throw std::runtime_error("Error creating socket");
+    }
+
+    //step 3
+    std::cout << "Binding\n";
+    int WSAError = bind(serverSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr));
+    if(WSAError){
+        cleanup();
+        std::cerr << "ERROR: Error binding socket: " << WSAGetLastError() << std::endl;
+        throw std::runtime_error("Error binding socket");
+    }
+    int tempSize = sizeof(socketAddr);
+    getsockname(serverSocket,(sockaddr*) &socketAddr,&tempSize);
+    std::cout << "Server is at: " << inet_ntoa(socketAddr.sin_addr) << "\n";
+
+    //Step 4
+    std::cout << "Listening\n";
+    WSAError = listen(serverSocket,MAX_PARTICIPTANTS-1);
+    if(WSAError){
+        cleanup();
+        std::cerr << "ERROR: Cannot listen: " << WSAGetLastError() << std::endl;
+        throw std::runtime_error("Cannot listen");
+    }
+}
+
+int server::startWSA(WSAData* wsaData){
+    requiredData = *wsaData;
+    int startupError = WSAStartup(network::WINSOCK_VERSION_NEEDED,&(this->requiredData)); //crashes
+    return startupError;
 }

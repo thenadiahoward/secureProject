@@ -15,12 +15,11 @@ namespace network{
     const int MAX_MESSAGE_LEN = BUFFER_SIZE;
 
     class server{
-        WSADATA requiredData;
         sockaddr_in socketAddr;
         SOCKET serverSocket = INVALID_SOCKET;
-        char buffer[BUFFER_SIZE] = {0};
+        bool mainServer = true;
 
-        void cleanup();
+        void cleanup() const;
         /*
         1) Init WSA DLL - WSAStartup()
         2) create a socket - socket()
@@ -31,17 +30,22 @@ namespace network{
         7) Disconnect - closesocket()
         */
         public:
+            WSADATA requiredData;
+
             server(std::string );
             server(const server&);
             server();
             server(SOCKET);
+            server(WSAData* );
             ~server();
-            SOCKET acceptConnection();
-            std::string receiveMessage();
+
+            SOCKET acceptConnection() const;
+            std::string receiveMessage() const;
+            void putIntoListen() const;
+            int startWSA(WSAData* );
     };
 
     class client{
-        WSADATA requiredData;
         sockaddr_in socketAddr;
         SOCKET clientSocket = INVALID_SOCKET;
 
@@ -53,13 +57,17 @@ namespace network{
         4) Send and receive data - recv(),send(),recvfrom(),sendto()
         5) Disconnect - closesocket()
         */
-       public:
-        client(std::string );
-        client(const client& );
-        ~client();
-        bool sendMessage(std::string);
-        bool sendFile(/*file goes here*/);
+        public:
+            WSADATA requiredData;
 
+            client(std::string );
+            client(std::string, WSAData* );
+            client(WSAData* );
+            client(const client& );
+            client();
+            ~client();
+            bool sendMessage(std::string);
+            bool sendFile(/*file goes here*/);
     };
 };
 
