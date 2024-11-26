@@ -1,17 +1,22 @@
+//system includes
 #include <vector>
-#include "networking/network.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-void acceptConnections(network::server&,std::vector<network::server>&);
+//local includes
+#include "networking/network.h"
+
+//helper function prototypes
+void acceptConnections(network::server*,std::vector<network::server*>&);
+network::server* getServer(std::vector<network::server*>& );
+void addConnection(std::vector<network::server*>&,network::server*);
 
 int main(int argc,char** argv){
-    omp_set_num_teams(network::MAX_PARTICIPTANTS);
+    omp_set_num_teams(1+2+1); //1 Master thread, 1 client and 1 server thread, 1 application thread
     int num_threads;
-    std::vector<network::server> connections = std::vector<network::server>(); //has race conditions
+    std::vector<network::server*> connections = std::vector<network::server*>(); //has race conditions
     std::string connectionIP = network::SELF;
-    std::string temp;
     #ifdef _OPENMP
     num_threads = network::MAX_PARTICIPTANTS;
     #else
@@ -24,39 +29,81 @@ int main(int argc,char** argv){
     //}else{
     //    connectionIP = argv[1];
     //}
-    network::server testServer = network::server();
-    temp = "";
-    int threadID;
+    //int threadID;
+    WSAData requiredData;
     //int active = 0;
+    WSAStartup(network::WINSOCK_VERSION_NEEDED,&(requiredData));
+
+    network::server testServer = network::server(&requiredData);
     
-    #pragma omp parallel num_threads(num_threads) private(connectionIP,temp,threadID)
+    #pragma omp parallel num_threads(num_threads) private(connectionIP/*,threadID*/)
     {
         connectionIP = network::SELF;
-        threadID = omp_get_thread_num();
+        //threadID = omp_get_thread_num();
 
         #pragma omp single
         { //if master thread, aka the server or 1 thread
-            std::cout << "Hello\n";
-            for(;;){ //main application loop
+            for(;;){ //main application loop, master should be stuck here
+/*
+                #pragma omp task //spin off task to create client before blocking to accept connections
+                { //this code is NOT executed by the master thread
+                    std::cout << "Please enter the connection string (blank for self): ";
+                    std::getline(std::cin,connectionIP);
+                    if(connectionIP != "") network::client localClient = network::client(connectionIP);
+                    else network::client localClient = network::client();
+                }
+*/
                 if(connections.size() < (network::MAX_PARTICIPTANTS - 1)){
-                    #pragma omp task
-                    {
-                        std::cout << "Please enter the connection string (blank for self): ";
-                        std::getline(std::cin,temp);
-                        if (temp != "") connectionIP = temp;
-                        else std::cout << "IP Empty, connecting to loopback\n";
-                        network::client localClient = network::client(connectionIP);
-                        
+                    acceptConnections(&testServer,connections);
+                    //testServer.putIntoListen();
+                }
+
+                //FIXME: connections is modified in emutls_get_address, which I don't have on my PC so idk where the fuck it's coming from
+                //The above FIXME is resolved when compiling with optimization set to 03
+                #pragma omp task default(none) shared(requiredData,std::cout,connections) //spin off server task once connection is accepted
+                {
+                    network::server* localServer = getServer(connections);
+                    //localServer->startWSA(&requiredData);
+                    
+                    std::cout << "Connection received:" << requiredData.szSystemStatus << "\n";
+                    if(localServer != nullptr){
+                        std::string message = "";
+                        do{
+                            message = localServer->receiveMessage();
+                            std::cout << message << "\n";
+                        }while(message != "");
+                        addConnection(connections,localServer);
                     }
-                    acceptConnections(testServer,connections);
                 }
             }
         }
+        //other threads at rest here, until assigned a task
     }
 }
 
-void acceptConnections(network::server& server,std::vector<network::server>& connections){
-    network::server temp = network::server(server.acceptConnection());
+//helper function implementation
+void acceptConnections(network::server* server,std::vector<network::server*>& connections){
+    network::server temp = network::server(server->acceptConnection());
     #pragma omp critical //so two things don't get pushed at the same time and both end up frankenstein'd
-    connections.push_back(temp);
+    {
+        connections.push_back(&temp);
+    }
+}
+
+void addConnection(std::vector<network::server*>& connections,network::server* server){
+    #pragma omp critical
+    {
+        connections.push_back(server);
+    }
+}
+
+network::server* getServer(std::vector<network::server*>& availableConnections){
+    if(availableConnections.empty()) return nullptr;
+    std::vector<network::server*>::iterator temp;
+    #pragma omp critical
+    {
+        temp = availableConnections.end() - 1; //vector.end points 1 past the end, so subtract 1 to get the last element
+        availableConnections.erase(temp);
+    }
+    return *temp;
 }
