@@ -3,9 +3,6 @@
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
-#include <openssl/evp.h>
-#include <openssl/aes.h>
-#include <openssl/rand.h>
 
 using namespace network;
 using convert_type = std::codecvt_utf8<wchar_t>;
@@ -112,7 +109,7 @@ client::~client(){
 }
 
 bool client::sendMessage(std::string message){
-    std::string encryptedMessage = encryptMessage(message, key, iv); // encrypt message
+    std::string encryptedMessage = encryptMessage(message, ENCRYPTION_KEY, ENCRYPTION_IV); // encrypt message
     int error;
     if(send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
         std::cerr << "WARNING: Error sending message: " << error << std::endl;

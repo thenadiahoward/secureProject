@@ -2,9 +2,6 @@
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
-#include <openssl/evp.h>
-#include <openssl/aes.h>
-#include <openssl/rand.h>
 using namespace network;
 
 server::server(std::string IPAddr = SELF){
@@ -123,9 +120,7 @@ std::string server::receiveMessage() const{
     }else{
         buffer[num_recv] = '\0';
 
-        std::string key = "ThisIsAnEncryptionKey123456789";
-        std::string iv = "YourInitVector1234";
-        std::string decryptedMessage = decryptMessage(std::string(buffer), key, iv); //decrypt message
+        std::string decryptedMessage = decryptMessage(std::string(buffer), ENCRYPTION_KEY, ENCRYPTION_IV); //decrypt message
         return decryptedMessage;
     }
 }
