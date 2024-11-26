@@ -2,6 +2,9 @@
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 using namespace network;
 
 server::server(std::string IPAddr = SELF){
@@ -111,8 +114,41 @@ std::string server::receiveMessage(){
         return std::string("");
     }else{
         buffer[num_recv] = '\0';
-        return std::string(buffer);
+
+        std::string key = "ThisIsAnEncryptionKey123456789";
+        std::string iv = "YourInitVector1234";
+        std::string decryptedMessage = decryptMessage(std::string(buffer), key, iv); //decrypt message
+        return decryptedMessage;
     }
+}
+
+std::string decryptMessage(const std::string& ciphertext, const std::string& key, const std::string& iv) {
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) throw std::runtime_error("Failed to create decryption context");
+
+    if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char*)key.c_str(), (unsigned char*)iv.c_str())) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Failed to initialize decryption");
+    }
+
+    std::string plaintext(ciphertext.size(), '\0');
+    int len = 0, plaintext_len = 0;
+
+    if (1 != EVP_DecryptUpdate(ctx, (unsigned char*)plaintext.data(), &len, (unsigned char*)ciphertext.c_str(), ciphertext.size())) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Decryption failed");
+    }
+    plaintext_len += len;
+
+    if (1 != EVP_DecryptFinal_ex(ctx, (unsigned char*)plaintext.data() + plaintext_len, &len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Final decryption step failed");
+    }
+    plaintext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+    plaintext.resize(plaintext_len);
+    return plaintext;
 }
 
 server::server(const network::server& copyFrom){

@@ -3,11 +3,15 @@
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 
 using namespace network;
 using convert_type = std::codecvt_utf8<wchar_t>;
 
 std::wstring_convert<convert_type, wchar_t> converter;
+
 
 client::client(std::string ipAddr = SELF){
     //Step 1
@@ -68,11 +72,43 @@ client::~client(){
 }
 
 bool client::sendMessage(std::string message){
+    std::string key = "ThisIsAnEncryptionKey123456789";
+    std::string iv = "YourInitVector1234";
+    std::string encryptedMessage = encryptMessage(message, key, iv); // encrypt message
     int error;
-    if(send(clientSocket,message.c_str(),message.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
+    if(send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
         std::cerr << "WARNING: Error sending message: " << error << std::endl;
         return false;
     }else{
         return true;
     }
+}
+
+std::string encryptMessage(const std::string& plaintext, const std::string& key, const std::string& iv) {
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) throw std::runtime_error("Failed to create encryption context");
+
+    if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char*)key.c_str(), (unsigned char*)iv.c_str())) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Failed to initialize encryption");
+    }
+
+    std::string ciphertext(plaintext.size() + EVP_CIPHER_block_size(EVP_aes_256_cbc()), '\0');
+    int len = 0, ciphertext_len = 0;
+
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char*)ciphertext.data(), &len, (unsigned char*)plaintext.c_str(), plaintext.size())) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Encryption failed");
+    }
+    ciphertext_len += len;
+
+    if (1 != EVP_EncryptFinal_ex(ctx, (unsigned char*)ciphertext.data() + ciphertext_len, &len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("Final encryption step failed");
+    }
+    ciphertext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+    ciphertext.resize(ciphertext_len);
+    return ciphertext;
 }
