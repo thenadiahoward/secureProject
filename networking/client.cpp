@@ -9,7 +9,6 @@ using convert_type = std::codecvt_utf8<wchar_t>;
 
 std::wstring_convert<convert_type, wchar_t> converter;
 
-
 client::client(std::string ipAddr = SELF){
     if(ipAddr == "") throw std::logic_error("No IP provided");
     //Step 1
@@ -37,8 +36,8 @@ client::client(std::string ipAddr = SELF){
     retry:
     socketAddr.sin_family = AF_INET;
     InetPton(AF_INET,ipAddr.c_str(),&socketAddr.sin_addr.s_addr); //there's an eroneous error of "const char* is incompatiable with LPCWSTR", ignore it
-    int error;
-    if(connect(clientSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr)) == SOCKET_ERROR && (error = WSAGetLastError())){
+    int error = connect(clientSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr));
+    if(error == SOCKET_ERROR && (error = WSAGetLastError())){
         if(socketAddr.sin_port != htons(BACKUP_SERVER_PORT)){
             std::cerr << "\nWARNING: Connecting failed(" << error <<")\nIP: " << ipAddr << ":"<< SERVER_PORT <<"\nAttempting backup port\n";
             socketAddr.sin_port = htons(BACKUP_SERVER_PORT);
@@ -91,33 +90,29 @@ client::client(){
     }
     std::cout << "Connection established\n";
 }
+#pragma GCC pop_options
 
 void client::cleanup(){
     if(clientSocket != INVALID_SOCKET) closesocket(this->clientSocket);
-    int WSAError = WSACleanup();
-    int error = WSAGetLastError();
-    if(WSAError && error != 10093){
-        std::cerr << "ERROR: Cleanup error: "<< error <<"\n";
-        throw std::runtime_error("Cleanup error");
-    }else if(error == 10093){
-        std::cerr << "WARNING: WSA does not exist/already shutdown\n";
-    }
 }
 
 client::~client(){
     cleanup();
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("Og")
 bool client::sendMessage(std::string message){
     std::string encryptedMessage = encryptMessage(message, ENCRYPTION_KEY, ENCRYPTION_IV); // encrypt message
     int error;
-    if(send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0) == SOCKET_ERROR && (error = WSAGetLastError())){
-        std::cerr << "WARNING: Error sending message: " << error << std::endl;
+    error = send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0);
+    if((error == SOCKET_ERROR) && (error = WSAGetLastError())){
+        std::cerr << "WARNING: Error sending message to " << inet_ntoa(socketAddr.sin_addr) << ": " << error << std::endl;
         return false;
-    }else{
-        return true;
     }
+    return true;
 }
+#pragma GCC pop_options
 
 client::client(WSAData* wsaData){
     std::string ipAddr = SELF;

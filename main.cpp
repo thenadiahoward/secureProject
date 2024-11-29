@@ -31,10 +31,10 @@ int main(int argc,char** argv){
     //}
     //int threadID;
     WSAData requiredData;
-    //int active = 0;
+    //uint8_t active = 0;
     WSAStartup(network::WINSOCK_VERSION_NEEDED,&(requiredData));
 
-    network::server testServer = network::server(&requiredData);
+    //network::server testServer = network::server(&requiredData);
     
     #pragma omp parallel num_threads(num_threads) private(connectionIP/*,threadID*/)
     {
@@ -44,21 +44,32 @@ int main(int argc,char** argv){
         #pragma omp single
         { //if master thread, aka the server or 1 thread
             for(;;){ //main application loop, master should be stuck here
-/*
+
                 #pragma omp task //spin off task to create client before blocking to accept connections
                 { //this code is NOT executed by the master thread
                     std::cout << "Please enter the connection string (blank for self): ";
                     std::getline(std::cin,connectionIP);
-                    if(connectionIP != "") network::client localClient = network::client(connectionIP);
-                    else network::client localClient = network::client();
+                    network::client* localClient; //if this isn't a pointer it's a different client than the one connected to the server
+                    #pragma omp critical
+                    {
+                        if(connectionIP != "") localClient = new network::client(connectionIP);
+                        else localClient = new network::client();
+                    }
+                    std::string message = "";
+                    do{
+                        std::getline(std::cin,message);
+                    }while(message != "" && localClient->sendMessage(message));
+                    std::cout << "Closing client\n";
+                    localClient->~client();
                 }
-*/
+
                 if(connections.size() < (network::MAX_PARTICIPTANTS - 1)){
-                    acceptConnections(&testServer,connections);
+                    for(;;){;}
+                    //acceptConnections(&testServer,connections);
                     //testServer.putIntoListen();
                 }
 
-                //FIXME: connections is modified in emutls_get_address, which I don't have on my PC so idk where the fuck it's coming from
+                //connections is modified in emutls_get_address, which I don't have on my PC so idk where the fuck it's coming from
                 //The above FIXME is resolved when compiling with optimization set to 03
                 #pragma omp task default(none) shared(requiredData,std::cout,connections) //spin off server task once connection is accepted
                 {
@@ -79,6 +90,7 @@ int main(int argc,char** argv){
         }
         //other threads at rest here, until assigned a task
     }
+    WSACleanup();
 }
 
 //helper function implementation

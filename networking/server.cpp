@@ -78,14 +78,6 @@ server::~server(){
 
 void server::cleanup() const{
     if(serverSocket != INVALID_SOCKET) closesocket(this->serverSocket);
-    int WSAError = WSACleanup();
-    int error = WSAGetLastError();
-    if(WSAError && error != 10093){
-        std::cerr << "ERROR: Cleanup error: "<< error <<"\n";
-        throw std::runtime_error("Cleanup error");
-    }else if(error == 10093){
-        std::cerr << "WARNING: WSA does not exist/already shutdown\n";
-    }
 }
 
 server::server(SOCKET connectedSocket){
