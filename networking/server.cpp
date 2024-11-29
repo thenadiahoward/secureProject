@@ -1,10 +1,10 @@
 #include "network.h"
+
 #include <WS2tcpip.h>
 #include <codecvt>
 #include <locale>
-using namespace network;
 
-server::server(std::string IPAddr = SELF){
+network::server::server(std::string IPAddr = SELF){
     //Step 1
     std::cout << "Starting WSA\n";
     int WSAError = WSAStartup(WINSOCK_VERSION_NEEDED,&requiredData);
@@ -51,7 +51,7 @@ server::server(std::string IPAddr = SELF){
 }
 
 //The returned SOCKET should be stored somewhere
-SOCKET server::acceptConnection() const{
+SOCKET network::server::acceptConnection() const{
     //Step 5
     SOCKET otherParty;
     std::cout << "Waiting for connection (" << inet_ntoa(this->socketAddr.sin_addr) <<")...";
@@ -72,15 +72,15 @@ SOCKET server::acceptConnection() const{
     return otherParty;
 }
 
-server::~server(){
+network::server::~server(){
     if(mainServer) cleanup();
 }
 
-void server::cleanup() const{
+void network::server::cleanup() const{
     if(serverSocket != INVALID_SOCKET) closesocket(this->serverSocket);
 }
 
-server::server(SOCKET connectedSocket){
+network::server::server(SOCKET connectedSocket){
     mainServer = false;
     int socketAddrLen = sizeof(socketAddr);
     getpeername(connectedSocket,(SOCKADDR*)&socketAddr,&socketAddrLen);
@@ -88,7 +88,7 @@ server::server(SOCKET connectedSocket){
     //WSAStartup(network::WINSOCK_VERSION_NEEDED,&requiredData);
 }
 
-std::string server::receiveMessage() const{
+std::string network::server::receiveMessage() const{
     int error;
     char buffer[BUFFER_SIZE];
     int num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0);
@@ -146,13 +146,13 @@ std::string decryptMessage(const std::string& ciphertext, const std::string& key
     return plaintext;
 }
 
-server::server(const network::server& copyFrom){
+network::server::server(const network::server& copyFrom){
     this->requiredData = copyFrom.requiredData;
     this->serverSocket = copyFrom.serverSocket;
     this->socketAddr = copyFrom.socketAddr;
 }
 
-server::server(){
+network::server::server(){
     //Step 1
     std::cout << "Starting WSA\n";
     int WSAError = WSAStartup(WINSOCK_VERSION_NEEDED,&requiredData);
@@ -232,7 +232,7 @@ void network::server::putIntoListen() const{
     }
 }
 
-server::server(WSAData* wsaData){
+network::server::server(WSAData* wsaData){
 
     requiredData = *wsaData;
     std::cout << "Status: " << requiredData.szSystemStatus << std::endl; //print WSA status and flush
@@ -295,7 +295,7 @@ server::server(WSAData* wsaData){
     }
 }
 
-int server::startWSA(WSAData* wsaData){
+int network::server::startWSA(WSAData* wsaData){
     requiredData = *wsaData;
     int startupError = WSAStartup(network::WINSOCK_VERSION_NEEDED,&(this->requiredData)); //crashes
     return startupError;

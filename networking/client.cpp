@@ -4,12 +4,11 @@
 #include <codecvt>
 #include <locale>
 
-using namespace network;
 using convert_type = std::codecvt_utf8<wchar_t>;
 
 std::wstring_convert<convert_type, wchar_t> converter;
 
-client::client(std::string ipAddr = SELF){
+network::client::client(std::string ipAddr = SELF){
     if(ipAddr == "") throw std::logic_error("No IP provided");
     //Step 1
     std::cout << "Starting WSA\n";
@@ -50,7 +49,7 @@ client::client(std::string ipAddr = SELF){
     std::cout << "Connection established\n";
 }
 
-client::client(){
+network::client::client(){
     std::string ipAddr = SELF;
     //Step 1
     std::cout << "Starting WSA\n";
@@ -90,19 +89,16 @@ client::client(){
     }
     std::cout << "Connection established\n";
 }
-#pragma GCC pop_options
 
-void client::cleanup(){
+void network::client::cleanup(){
     if(clientSocket != INVALID_SOCKET) closesocket(this->clientSocket);
 }
 
-client::~client(){
+network::client::~client(){
     cleanup();
 }
 
-#pragma GCC push_options
-#pragma GCC optimize ("Og")
-bool client::sendMessage(std::string message){
+bool network::client::sendMessage(std::string message){
     std::string encryptedMessage = encryptMessage(message, ENCRYPTION_KEY, ENCRYPTION_IV); // encrypt message
     int error;
     error = send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0);
@@ -112,9 +108,8 @@ bool client::sendMessage(std::string message){
     }
     return true;
 }
-#pragma GCC pop_options
 
-client::client(WSAData* wsaData){
+network::client::client(WSAData* wsaData){
     std::string ipAddr = SELF;
     requiredData = *wsaData;
     std::cout << "Status: " << requiredData.szSystemStatus << std::endl; //print WSA status and flush
@@ -148,7 +143,7 @@ client::client(WSAData* wsaData){
     std::cout << "Connection established\n";
 }
 
-client::client(std::string ipAddr = SELF, WSAData* wsaData = nullptr){
+network::client::client(std::string ipAddr = SELF, WSAData* wsaData = nullptr){
     if(ipAddr == "") throw std::logic_error("No IP provided");
     //Step 1
     requiredData = *wsaData;
