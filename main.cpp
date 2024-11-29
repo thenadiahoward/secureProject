@@ -13,7 +13,7 @@ network::server* getServer(std::vector<network::server*>& );
 void addConnection(std::vector<network::server*>&,network::server*);
 
 int main(int argc,char** argv){
-    omp_set_num_teams(1+2+1); //1 Master thread, 1 client and 1 server thread, 1 application thread
+    omp_set_num_teams(1+2+2); //1 Master thread, 1 client and 1 server thread, 1 application thread
     int num_threads;
     std::vector<network::server*> connections = std::vector<network::server*>(); //has race conditions
     std::string connectionIP = network::SELF;
@@ -34,9 +34,9 @@ int main(int argc,char** argv){
     //uint8_t active = 0;
     WSAStartup(network::WINSOCK_VERSION_NEEDED,&(requiredData));
 
-    //network::server testServer = network::server(&requiredData);
+    network::server testServer = network::server(&requiredData);
     
-    #pragma omp parallel num_threads(num_threads) private(connectionIP/*,threadID*/)
+    #pragma omp parallel num_threads(num_threads*2+1) private(connectionIP/*,threadID*/)
     {
         connectionIP = network::SELF;
         //threadID = omp_get_thread_num();
@@ -64,9 +64,8 @@ int main(int argc,char** argv){
                 }
 
                 if(connections.size() < (network::MAX_PARTICIPTANTS - 1)){
-                    for(;;){;}
-                    //acceptConnections(&testServer,connections);
-                    //testServer.putIntoListen();
+                    acceptConnections(&testServer,connections);
+                    testServer.putIntoListen();
                 }
 
                 //connections is modified in emutls_get_address, which I don't have on my PC so idk where the fuck it's coming from
