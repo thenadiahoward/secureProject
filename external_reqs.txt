@@ -1,1 +1,1 @@
-OpenSSL: https://slproweb.com/products/Win32OpenSSL.html
+OpenSSL: https://slproweb.com/products/Win32OpenSSL.html Change the default Install location and add both *crypto*.dll and *ssl*.dll to folder
