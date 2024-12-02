@@ -9,7 +9,7 @@ int main(int argc, char** argv){
     if(argc - 1){ 
         ipConnect = argv[1];
     }else{
-        ipConnect = "192.0.0.1";
+        ipConnect = "127.0.0.1";
     }
     network::server testServer = network::server(ipConnect);
     network::server temp = network::server(testServer.acceptConnection());
