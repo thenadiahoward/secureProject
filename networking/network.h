@@ -22,9 +22,9 @@ namespace network{
     const int MAX_MESSAGE_LEN = BUFFER_SIZE;
 
     //these needed to be extern so they wouldn't be defined multiple times
-    extern std::string encryptMessage(const std::string& plaintext, const std::string& key, const std::string& iv);
+    extern size_t encryptMessage(const std::string& plaintext, unsigned char* output, const std::string& key = std::string(ENCRYPTION_KEY), const std::string& iv = std::string(ENCRYPTION_IV));
 
-    extern std::string decryptMessage(const std::string& ciphertext, const std::string& key, const std::string& iv);
+    extern std::string decryptMessage(const unsigned char* ciphertext, size_t ciphertext_len, const std::string& key = std::string(ENCRYPTION_KEY), const std::string& iv = std::string(ENCRYPTION_IV));
 
     class server{
         sockaddr_in socketAddr;

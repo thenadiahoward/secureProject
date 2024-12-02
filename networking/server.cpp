@@ -90,8 +90,8 @@ network::server::server(SOCKET connectedSocket){
 
 std::string network::server::receiveMessage() const{
     int error;
-    char buffer[BUFFER_SIZE];
-    int num_recv = recv(serverSocket,buffer,BUFFER_SIZE,0);
+    unsigned char buffer[BUFFER_SIZE] = {0};
+    int num_recv = recv(serverSocket,(char*) buffer,BUFFER_SIZE,0);
     if(num_recv == SOCKET_ERROR && (error = WSAGetLastError())){
         switch (error){
             case WSAECONNRESET:
@@ -110,40 +110,9 @@ std::string network::server::receiveMessage() const{
         
         return std::string("");
     }else{
-        buffer[num_recv] = '\0';
-
-        std::string decryptedMessage = decryptMessage(std::string(buffer), ENCRYPTION_KEY, ENCRYPTION_IV); //decrypt message
+        std::string decryptedMessage = decryptMessage(buffer,num_recv,ENCRYPTION_KEY,ENCRYPTION_IV); //decrypt message
         return decryptedMessage;
     }
-}
-
-std::string decryptMessage(const std::string& ciphertext, const std::string& key, const std::string& iv) {
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx) throw std::runtime_error("Failed to create decryption context");
-
-    if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (unsigned char*)key.c_str(), (unsigned char*)iv.c_str())) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("Failed to initialize decryption");
-    }
-
-    std::string plaintext(ciphertext.size(), '\0');
-    int len = 0, plaintext_len = 0;
-
-    if (1 != EVP_DecryptUpdate(ctx, (unsigned char*)plaintext.data(), &len, (unsigned char*)ciphertext.c_str(), ciphertext.size())) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("Decryption failed");
-    }
-    plaintext_len += len;
-
-    if (1 != EVP_DecryptFinal_ex(ctx, (unsigned char*)plaintext.data() + plaintext_len, &len)) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("Final decryption step failed");
-    }
-    plaintext_len += len;
-
-    EVP_CIPHER_CTX_free(ctx);
-    plaintext.resize(plaintext_len);
-    return plaintext;
 }
 
 network::server::server(const network::server& copyFrom){
@@ -277,6 +246,11 @@ network::server::server(WSAData* wsaData){
     std::cout << "Binding\n";
     int WSAError = bind(serverSocket,(SOCKADDR*)&socketAddr,sizeof(socketAddr));
     if(WSAError){
+        if(!attempt){
+            attempt = true;
+            getAddrInfoReturn = getaddrinfo(NULL,std::to_string(BACKUP_SERVER_PORT).c_str(),&hints,&res);
+            goto retry;
+        }
         cleanup();
         std::cerr << "ERROR: Error binding socket: " << WSAGetLastError() << std::endl;
         throw std::runtime_error("Error binding socket");

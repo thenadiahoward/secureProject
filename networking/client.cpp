@@ -99,9 +99,10 @@ network::client::~client(){
 }
 
 bool network::client::sendMessage(std::string message){
-    std::string encryptedMessage = encryptMessage(message, ENCRYPTION_KEY, ENCRYPTION_IV); // encrypt message
+    unsigned char* encrypted_message = (unsigned char*) malloc(message.size() + 1); //+1 to include \0
+    size_t ciphertext_len = encryptMessage(message,encrypted_message); // encrypt message
     int error;
-    error = send(clientSocket,encryptedMessage.c_str(),encryptedMessage.length(),0);
+    error = send(clientSocket,(char*) encrypted_message,ciphertext_len,0);
     if((error == SOCKET_ERROR) && (error = WSAGetLastError())){
         std::cerr << "WARNING: Error sending message to " << inet_ntoa(socketAddr.sin_addr) << ": " << error << std::endl;
         return false;
